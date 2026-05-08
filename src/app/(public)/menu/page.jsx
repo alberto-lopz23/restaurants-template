@@ -1,11 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
-import { getPlatos, addPedido } from "@/lib/db";
+import { useState, useEffect, Suspense } from "react";
+import { getPlatos } from "@/lib/db";
 import { useSearchParams } from "next/navigation";
 
 const categorias = ["Entradas", "Platos Principales", "Bebidas", "Postres"];
 
-export default function MenuPage() {
+function MenuContent() {
   const searchParams = useSearchParams();
   const mesa = searchParams.get("mesa");
 
@@ -47,9 +47,7 @@ export default function MenuPage() {
     setCarrito((prev) => {
       const existe = prev.find((p) => p.id === plato.id);
       if (existe) {
-        return prev.map((p) =>
-          p.id === plato.id ? { ...p, cantidad: p.cantidad + 1 } : p,
-        );
+        return prev.map((p) => p.id === plato.id ? { ...p, cantidad: p.cantidad + 1 } : p);
       }
       return [...prev, { ...plato, cantidad: 1 }];
     });
@@ -59,9 +57,7 @@ export default function MenuPage() {
     setCarrito((prev) => {
       const existe = prev.find((p) => p.id === id);
       if (existe.cantidad === 1) return prev.filter((p) => p.id !== id);
-      return prev.map((p) =>
-        p.id === id ? { ...p, cantidad: p.cantidad - 1 } : p,
-      );
+      return prev.map((p) => p.id === id ? { ...p, cantidad: p.cantidad - 1 } : p);
     });
   };
 
@@ -69,16 +65,9 @@ export default function MenuPage() {
     if (!mesa || carrito.length === 0) return;
     setEnviando(true);
     try {
-      const {
-        getMesas,
-        getSesionActiva,
-        addPedidoSesion,
-        getPedidosSesion,
-        updatePedidoSesion,
-      } = await import("@/lib/db");
+      const { getMesas, getSesionActiva, addPedidoSesion, getPedidosSesion, updatePedidoSesion, incrementarPopularidad } = await import("@/lib/db");
       const { arrayUnion } = await import("firebase/firestore");
 
-      // Buscar el id de la mesa en Firestore por su número
       const mesas = await getMesas();
       const mesaDoc = mesas.find((m) => m.numero === Number(mesa));
       if (!mesaDoc) {
@@ -86,12 +75,9 @@ export default function MenuPage() {
         return;
       }
 
-      // Buscar sesión activa
       const sesion = await getSesionActiva(mesaDoc.id);
       if (!sesion) {
-        alert(
-          "Esta mesa no tiene una sesión activa. Pide al personal que abra la mesa.",
-        );
+        alert("Esta mesa no tiene una sesión activa. Pide al personal que abra la mesa.");
         return;
       }
 
@@ -101,11 +87,8 @@ export default function MenuPage() {
         precio: p.precio,
       }));
 
-      // Buscar si ya hay un pedido pendiente en esta sesión
       const pedidosExistentes = await getPedidosSesion(mesaDoc.id, sesion.id);
-      const pedidoPendiente = pedidosExistentes.find(
-        (p) => p.estado === "pendiente",
-      );
+      const pedidoPendiente = pedidosExistentes.find((p) => p.estado === "pendiente");
 
       if (pedidoPendiente) {
         await updatePedidoSesion(mesaDoc.id, sesion.id, pedidoPendiente.id, {
@@ -123,9 +106,8 @@ export default function MenuPage() {
         });
       }
 
-      const { incrementarPopularidad } = await import("@/lib/db");
       await incrementarPopularidad(
-        carrito.map((p) => ({ id: p.id, cantidad: p.cantidad })),
+        carrito.map((p) => ({ id: p.id, cantidad: p.cantidad }))
       );
 
       setCarrito([]);
@@ -143,13 +125,7 @@ export default function MenuPage() {
   const llamarCamarero = async () => {
     if (!mesa) return;
     try {
-      const {
-        getMesas,
-        getSesionActiva,
-        getPedidosSesion,
-        addPedidoSesion,
-        updatePedidoSesion,
-      } = await import("@/lib/db");
+      const { getMesas, getSesionActiva, getPedidosSesion, addPedidoSesion, updatePedidoSesion } = await import("@/lib/db");
 
       const mesas = await getMesas();
       const mesaDoc = mesas.find((m) => m.numero === Number(mesa));
@@ -162,14 +138,10 @@ export default function MenuPage() {
       }
 
       const pedidosExistentes = await getPedidosSesion(mesaDoc.id, sesion.id);
-      const pedidoPendiente = pedidosExistentes.find(
-        (p) => p.estado === "pendiente",
-      );
+      const pedidoPendiente = pedidosExistentes.find((p) => p.estado === "pendiente");
 
       if (pedidoPendiente) {
-        await updatePedidoSesion(mesaDoc.id, sesion.id, pedidoPendiente.id, {
-          llamarCamarero: true,
-        });
+        await updatePedidoSesion(mesaDoc.id, sesion.id, pedidoPendiente.id, { llamarCamarero: true });
       } else {
         await addPedidoSesion(mesaDoc.id, sesion.id, {
           mesa: Number(mesa),
@@ -191,12 +163,7 @@ export default function MenuPage() {
   const pedirCuenta = async () => {
     if (!mesa) return;
     try {
-      const {
-        getMesas,
-        getSesionActiva,
-        getPedidosSesion,
-        updatePedidoSesion,
-      } = await import("@/lib/db");
+      const { getMesas, getSesionActiva, getPedidosSesion, updatePedidoSesion } = await import("@/lib/db");
 
       const mesas = await getMesas();
       const mesaDoc = mesas.find((m) => m.numero === Number(mesa));
@@ -206,14 +173,10 @@ export default function MenuPage() {
       if (!sesion) return;
 
       const pedidosExistentes = await getPedidosSesion(mesaDoc.id, sesion.id);
-      const pedidoPendiente = pedidosExistentes.find(
-        (p) => p.estado === "pendiente",
-      );
+      const pedidoPendiente = pedidosExistentes.find((p) => p.estado === "pendiente");
 
       if (pedidoPendiente) {
-        await updatePedidoSesion(mesaDoc.id, sesion.id, pedidoPendiente.id, {
-          pedirCuenta: true,
-        });
+        await updatePedidoSesion(mesaDoc.id, sesion.id, pedidoPendiente.id, { pedirCuenta: true });
       }
 
       setCarritoAbierto(false);
@@ -223,10 +186,7 @@ export default function MenuPage() {
     }
   };
 
-  const totalCarrito = carrito.reduce(
-    (acc, p) => acc + p.precio * p.cantidad,
-    0,
-  );
+  const totalCarrito = carrito.reduce((acc, p) => acc + p.precio * p.cantidad, 0);
   const cantidadCarrito = carrito.reduce((acc, p) => acc + p.cantidad, 0);
 
   if (cargando) {
@@ -241,9 +201,7 @@ export default function MenuPage() {
     <div className="min-h-screen bg-stone-50">
       {/* Header */}
       <div className="bg-white border-b border-stone-200 py-8 text-center px-4">
-        <p className="text-stone-400 text-xs uppercase tracking-[0.3em] mb-2">
-          La Casa de Juan
-        </p>
+        <p className="text-stone-400 text-xs uppercase tracking-[0.3em] mb-2">La Casa de Juan</p>
         <h1 className="text-3xl font-bold text-stone-800">Nuestra Carta</h1>
         <div className="flex items-center justify-center gap-3 mt-3">
           <div className="h-px w-16 bg-stone-300" />
@@ -287,48 +245,34 @@ export default function MenuPage() {
           >
             <div className="bg-white rounded-2xl shadow-sm border border-stone-100 overflow-hidden">
               <div className="px-6 pt-6 pb-3">
-                <h2 className="text-xl font-bold text-stone-800">
-                  {categoriaActiva}
-                </h2>
+                <h2 className="text-xl font-bold text-stone-800">{categoriaActiva}</h2>
                 <div className="h-px bg-stone-100 mt-3" />
               </div>
 
               <div className="px-6 pb-6 divide-y divide-stone-100">
                 {platosMostrados.length === 0 ? (
-                  <p className="text-stone-400 text-sm py-6">
-                    No hay platos en esta categoría.
-                  </p>
+                  <p className="text-stone-400 text-sm py-6">No hay platos en esta categoría.</p>
                 ) : (
                   platosMostrados.map((plato) => {
                     const enCarrito = carrito.find((p) => p.id === plato.id);
                     return (
                       <div
                         key={plato.id}
-                        className={`py-5 flex justify-between items-center gap-4 ${
-                          !plato.disponible ? "opacity-40" : ""
-                        }`}
+                        className={`py-5 flex justify-between items-center gap-4 ${!plato.disponible ? "opacity-40" : ""}`}
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-stone-800 font-semibold">
-                              {plato.nombre}
-                            </h3>
+                            <h3 className="text-stone-800 font-semibold">{plato.nombre}</h3>
                             {plato.destacado && (
                               <span className="text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full">
                                 Recomendado
                               </span>
                             )}
                           </div>
-                          <p className="text-stone-400 text-sm leading-relaxed mb-2">
-                            {plato.descripcion}
-                          </p>
-                          <span className="text-stone-800 font-bold">
-                            RD${plato.precio}
-                          </span>
+                          <p className="text-stone-400 text-sm leading-relaxed mb-2">{plato.descripcion}</p>
+                          <span className="text-stone-800 font-bold">RD${plato.precio}</span>
                           {!plato.disponible && (
-                            <span className="text-xs text-red-400 ml-2">
-                              No disponible
-                            </span>
+                            <span className="text-xs text-red-400 ml-2">No disponible</span>
                           )}
                         </div>
 
@@ -342,9 +286,7 @@ export default function MenuPage() {
                                 >
                                   −
                                 </button>
-                                <span className="text-stone-800 font-semibold w-4 text-center">
-                                  {enCarrito.cantidad}
-                                </span>
+                                <span className="text-stone-800 font-semibold w-4 text-center">{enCarrito.cantidad}</span>
                                 <button
                                   onClick={() => agregarAlCarrito(plato)}
                                   className="w-8 h-8 rounded-full bg-amber-500 hover:bg-amber-600 text-black transition flex items-center justify-center font-bold"
@@ -384,12 +326,9 @@ export default function MenuPage() {
               <button
                 onClick={() => {
                   const i = categorias.indexOf(categoriaActiva);
-                  if (i < categorias.length - 1)
-                    cambiarCategoria(categorias[i + 1]);
+                  if (i < categorias.length - 1) cambiarCategoria(categorias[i + 1]);
                 }}
-                disabled={
-                  categorias.indexOf(categoriaActiva) === categorias.length - 1
-                }
+                disabled={categorias.indexOf(categoriaActiva) === categorias.length - 1}
                 className="text-stone-400 hover:text-stone-700 disabled:opacity-20 transition text-sm"
               >
                 {categorias[categorias.indexOf(categoriaActiva) + 1] || ""} →
@@ -421,6 +360,7 @@ export default function MenuPage() {
               </span>
               <span className="font-medium">Ver pedido</span>
             </div>
+            <span className="font-bold">RD${totalCarrito}</span>
           </button>
         </div>
       )}
@@ -437,25 +377,15 @@ export default function MenuPage() {
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-stone-800 font-bold text-xl">Tu pedido</h2>
-              <button
-                onClick={() => setCarritoAbierto(false)}
-                className="text-stone-400 hover:text-stone-700 text-2xl"
-              >
-                ✕
-              </button>
+              <button onClick={() => setCarritoAbierto(false)} className="text-stone-400 hover:text-stone-700 text-2xl">✕</button>
             </div>
 
             <div className="space-y-4 mb-6">
               {carrito.map((plato) => (
-                <div
-                  key={plato.id}
-                  className="flex justify-between items-center"
-                >
+                <div key={plato.id} className="flex justify-between items-center">
                   <div className="flex-1">
                     <p className="text-stone-800 font-medium">{plato.nombre}</p>
-                    <p className="text-stone-400 text-sm">
-                      RD${plato.precio} c/u
-                    </p>
+                    <p className="text-stone-400 text-sm">RD${plato.precio} c/u</p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button
@@ -464,9 +394,7 @@ export default function MenuPage() {
                     >
                       −
                     </button>
-                    <span className="text-stone-800 font-semibold w-4 text-center">
-                      {plato.cantidad}
-                    </span>
+                    <span className="text-stone-800 font-semibold w-4 text-center">{plato.cantidad}</span>
                     <button
                       onClick={() => agregarAlCarrito(plato)}
                       className="w-8 h-8 rounded-full bg-amber-500 hover:bg-amber-600 text-black transition flex items-center justify-center font-bold"
@@ -481,14 +409,12 @@ export default function MenuPage() {
               ))}
             </div>
 
-            {/*
-           <div className="border-t border-stone-100 pt-4 mb-6">
+            <div className="border-t border-stone-100 pt-4 mb-6">
               <div className="flex justify-between items-center">
                 <span className="text-stone-500">Total</span>
                 <span className="text-stone-800 font-bold text-xl">RD${totalCarrito}</span>
               </div>
-            </div>  
-            */}
+            </div>
 
             <div className="space-y-3">
               <button
@@ -505,12 +431,6 @@ export default function MenuPage() {
               >
                 🔔 Llamar al camarero
               </button>
-              {!mesa && (
-                <p className="text-center text-xs text-red-400">
-                  Escanea el QR de tu mesa para poder pedir
-                </p>
-              )}
-
               <button
                 onClick={pedirCuenta}
                 disabled={!mesa}
@@ -518,6 +438,11 @@ export default function MenuPage() {
               >
                 🧾 Pedir la cuenta
               </button>
+              {!mesa && (
+                <p className="text-center text-xs text-red-400">
+                  Escanea el QR de tu mesa para poder pedir
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -526,7 +451,14 @@ export default function MenuPage() {
   );
 }
 
-{
-  /* hacer que cuando la mesa detecte que se escane el QR y no tenga sesión activa, 
-  muestre un botón para abrir la mesa (que en realidad abra la sesión) */
+export default function MenuPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <p className="text-stone-400 text-sm">Cargando menú...</p>
+      </div>
+    }>
+      <MenuContent />
+    </Suspense>
+  );
 }
