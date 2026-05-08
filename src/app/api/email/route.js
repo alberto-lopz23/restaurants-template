@@ -63,7 +63,7 @@ export async function POST(request) {
     }
 
     const { data, error } = await resend.emails.send({
-      from: "onboarding@resend.dev",
+      from: "reservaciones@platomeal.com",
       to: reservacion.clienteEmail,
       subject,
       html,
