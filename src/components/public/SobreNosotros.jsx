@@ -1,4 +1,9 @@
+"use client";
+import useConfig from "@/hooks/useConfig";
+
 export default function SobreNosotros() {
+  const config = useConfig();
+
   return (
     <section id="nosotros" className="bg-white py-24 px-6">
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center gap-12">
@@ -20,18 +25,12 @@ export default function SobreNosotros() {
           <h2 className="text-4xl font-bold text-gray-900 mb-6">
             Tradición y sabor desde 1995
           </h2>
-          <p className="text-gray-600 text-lg leading-relaxed mb-4">
-            Somos un restaurante familiar ubicado en el corazón de Santo Domingo, 
-            dedicados a traerte los sabores más auténticos de la cocina dominicana 
-            con ingredientes frescos y recetas que han pasado de generación en generación.
-          </p>
           <p className="text-gray-600 text-lg leading-relaxed">
-            Cada plato que servimos lleva el amor y dedicación de nuestra familia. 
-            Bienvenidos a nuestra mesa.
+            {config?.descripcion || "Cargando..."}
           </p>
         </div>
 
       </div>
     </section>
-  )
+  );
 }

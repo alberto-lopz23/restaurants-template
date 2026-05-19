@@ -3,6 +3,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import ProtectedRoute from "@/components/admin/ProtectedRoute";
+import useConfig from "@/hooks/useConfig";
 
 const navItems = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "⊞" },
@@ -16,6 +17,7 @@ const navItems = [
 export default function AdminLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
+  const config = useConfig();
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -30,7 +32,7 @@ export default function AdminLayout({ children }) {
         <aside className="w-64 bg-stone-900 min-h-screen flex flex-col fixed left-0 top-0">
           <div className="px-6 py-6 border-b border-stone-800">
             <p className="text-amber-400 text-xs uppercase tracking-widest mb-1">Admin</p>
-            <h1 className="text-white font-bold text-lg">La Casa de Juan</h1>
+            <h1 className="text-white font-bold text-lg">{config?.nombre || "El Restaurante"}</h1>
           </div>
           <nav className="flex-1 px-3 py-4 space-y-1">
             {navItems.map((item) => (

@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { getPlatos } from "@/lib/db";
 import { useSearchParams } from "next/navigation";
+import useConfig from "@/hooks/useConfig";
 
 const categorias = ["Entradas", "Platos Principales", "Bebidas", "Postres"];
 
@@ -19,6 +20,7 @@ function MenuContent() {
   const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [pedidoEnviado, setPedidoEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
+const config = useConfig();
 
   useEffect(() => {
     const cargar = async () => {
@@ -201,7 +203,7 @@ function MenuContent() {
     <div className="min-h-screen bg-stone-50">
       {/* Header */}
       <div className="bg-white border-b border-stone-200 py-8 text-center px-4">
-        <p className="text-stone-400 text-xs uppercase tracking-[0.3em] mb-2">La Casa de Juan</p>
+        <p className="text-stone-400 text-xs uppercase tracking-[0.3em] mb-2">{config?.nombre || "El Restaurante"}</p>
         <h1 className="text-3xl font-bold text-stone-800">Nuestra Carta</h1>
         <div className="flex items-center justify-center gap-3 mt-3">
           <div className="h-px w-16 bg-stone-300" />

@@ -26,12 +26,25 @@ export default function AdminReservaciones() {
     setCargando(false);
   };
 
-  const cancelar = async (id) => {
-    if (confirm("¿Cancelar esta reservación?")) {
-      await updateReservacion(id, { estado: "cancelada" });
-      cargar();
+const cancelar = async (id) => {
+  if (confirm("¿Cancelar esta reservación?")) {
+    const reservacion = reservaciones.find((r) => r.id === id);
+    await updateReservacion(id, { estado: "cancelada" });
+
+    if (reservacion?.clienteEmail) {
+      const { getConfig } = await import("@/lib/db");
+      const { enviarEmail } = await import("@/lib/email");
+      const config = await getConfig();
+      await enviarEmail("cancelacion", {
+        clienteNombre: reservacion.clienteNombre,
+        clienteEmail: reservacion.clienteEmail,
+        restaurante: config?.nombre || "El Restaurante",
+      });
     }
-  };
+
+    cargar();
+  }
+};
 
   const completar = async (id) => {
     await updateReservacion(id, { estado: "completada" });
