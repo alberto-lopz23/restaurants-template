@@ -202,15 +202,23 @@ const config = useConfig();
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Header */}
-      <div className="bg-white border-b border-stone-200 py-8 text-center px-4">
-        <p className="text-stone-400 text-xs uppercase tracking-[0.3em] mb-2">{config?.nombre || "El Restaurante"}</p>
-        <h1 className="text-3xl font-bold text-stone-800">Nuestra Carta</h1>
-        <div className="flex items-center justify-center gap-3 mt-3">
-          <div className="h-px w-16 bg-stone-300" />
-          <span className="text-stone-400 text-sm">✦</span>
-          <div className="h-px w-16 bg-stone-300" />
-        </div>
-      </div>
+      <div className="bg-white border-b border-stone-200 py-8 text-center px-4 relative">
+  {!mesa && (
+    
+     <a href="/"
+      className="absolute left-4 top-4 flex items-center gap-1 text-stone-400 hover:text-stone-700 text-sm transition"
+    >
+      ← Inicio
+    </a>
+  )}
+  <p className="text-stone-400 text-xs uppercase tracking-[0.3em] mb-2">{config?.nombre || "El Restaurante"}</p>
+  <h1 className="text-3xl font-bold text-stone-800">Nuestra Carta</h1>
+  <div className="flex items-center justify-center gap-3 mt-3">
+    <div className="h-px w-16 bg-stone-300" />
+    <span className="text-stone-400 text-sm">✦</span>
+    <div className="h-px w-16 bg-stone-300" />
+  </div>
+</div>
 
       {/* Tabs */}
       <div className="bg-white border-b border-stone-200 sticky top-0 z-10">
