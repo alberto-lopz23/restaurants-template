@@ -1,12 +1,9 @@
-import { Resend } from "resend";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { enviarEmail } from "@/lib/email";
+import { adminDb } from "@/lib/firebase-admin";
+import { enviarEmailServer } from "@/lib/mailer";
 
 const RESTAURANT_ID = "restaurante-1";
 
 export async function GET(request) {
-  // Verificar que sea Vercel quien llama
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return Response.json({ error: "No autorizado" }, { status: 401 });
@@ -23,24 +20,22 @@ export async function GET(request) {
       hour12: true,
     }).replace(" ", "").toLowerCase();
 
-    // Buscar reservaciones activas para esa fecha y hora
-    const ref = collection(db, "restaurants", RESTAURANT_ID, "reservaciones");
-    const q = query(
-      ref,
-      where("fecha", "==", fechaHoy),
-      where("hora", "==", horaFormateada),
-      where("estado", "==", "activa"),
-      where("recordatorioEnviado", "==", false)
-    );
+    const restRef = adminDb.collection("restaurants").doc(RESTAURANT_ID);
 
-    const snap = await getDocs(q);
+    const snap = await restRef
+      .collection("reservaciones")
+      .where("fecha", "==", fechaHoy)
+      .where("hora", "==", horaFormateada)
+      .where("estado", "==", "activa")
+      .where("recordatorioEnviado", "==", false)
+      .get();
 
     if (snap.empty) {
       return Response.json({ mensaje: "No hay recordatorios que enviar" });
     }
 
-    const { getConfig } = await import("@/lib/db");
-    const config = await getConfig();
+    const configSnap = await restRef.get();
+    const config = configSnap.exists ? configSnap.data() : null;
 
     let enviados = 0;
 
@@ -49,7 +44,7 @@ export async function GET(request) {
 
       if (!reservacion.clienteEmail) continue;
 
-      await enviarEmail("recordatorio", {
+      await enviarEmailServer("recordatorio", {
         clienteNombre: reservacion.clienteNombre,
         clienteEmail: reservacion.clienteEmail,
         restaurante: config?.nombre || "El Restaurante",
@@ -58,9 +53,9 @@ export async function GET(request) {
         tiempoGracia: config?.tiempoGracia || 15,
       });
 
-      // Marcar como enviado para no repetir
-      const { updateReservacion } = await import("@/lib/db");
-      await updateReservacion(reservacion.id, { recordatorioEnviado: true });
+      await restRef.collection("reservaciones").doc(reservacion.id).update({
+        recordatorioEnviado: true,
+      });
 
       enviados++;
     }

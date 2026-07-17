@@ -7,6 +7,7 @@ import useConfig from "@/hooks/useConfig";
 
 const navItems = [
   { label: "Dashboard", href: "/admin/dashboard", icon: "⊞" },
+  { label: "Reportes", href: "/admin/reportes", icon: "📊" },
   { label: "Menú", href: "/admin/menu", icon: "🍽" },
   { label: "Mesas", href: "/admin/mesas", icon: "🪑" },
   { label: "Pedidos", href: "/admin/pedidos", icon: "📋" },
@@ -36,7 +37,6 @@ export default function AdminLayout({ children }) {
           </div>
           <nav className="flex-1 px-3 py-4 space-y-1">
             {navItems.map((item) => (
-              
               <a  key={item.href}
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all ${

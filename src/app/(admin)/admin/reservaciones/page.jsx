@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
-import { getReservaciones, updateReservacion } from "@/lib/db";
+import { getReservaciones, updateReservacion, getConfig } from "@/lib/db";
+import { auth } from "@/lib/firebase";
+
+
 
 const estadoConfig = {
   activa: { label: "Activa", color: "bg-green-100 text-green-600 border-green-200" },
@@ -32,14 +35,27 @@ const cancelar = async (id) => {
     await updateReservacion(id, { estado: "cancelada" });
 
     if (reservacion?.clienteEmail) {
-      const { getConfig } = await import("@/lib/db");
-      const { enviarEmail } = await import("@/lib/email");
-      const config = await getConfig();
-      await enviarEmail("cancelacion", {
-        clienteNombre: reservacion.clienteNombre,
-        clienteEmail: reservacion.clienteEmail,
-        restaurante: config?.nombre || "El Restaurante",
-      });
+      try {
+        const config = await getConfig();
+        const idToken = await auth.currentUser?.getIdToken();
+        await fetch("/api/admin/email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            tipo: "cancelacion",
+            reservacion: {
+              clienteNombre: reservacion.clienteNombre,
+              clienteEmail: reservacion.clienteEmail,
+              restaurante: config?.nombre || "El Restaurante",
+            },
+          }),
+        });
+      } catch (err) {
+        console.error("Error enviando email de cancelación:", err);
+      }
     }
 
     cargar();

@@ -74,6 +74,7 @@ export default function AdminMesas() {
     if (mesaEditando) {
       await updateMesa(mesaEditando.id, data);
     } else {
+      data.token = crypto.randomUUID();
       await addMesa(data);
     }
     setModalAbierto(false);
@@ -106,6 +107,16 @@ export default function AdminMesas() {
       return;
     await cerrarSesion(mesa.id, mesa.sesionActiva);
     cargarMesas();
+  };
+
+  const abrirQr = async (mesa) => {
+    if (!mesa.token) {
+      const token = crypto.randomUUID();
+      await updateMesa(mesa.id, { token });
+      mesa = { ...mesa, token };
+      cargarMesas();
+    }
+    setQrModal(mesa);
   };
 
   const resumen = {
@@ -194,7 +205,6 @@ export default function AdminMesas() {
               Capacidad: {mesa.capacidad} personas
             </p>
 
-            {/* Botones de sesión */}
             <div className="space-y-2 mb-3">
               {mesa.estado !== "ocupada" ? (
                 <button
@@ -228,16 +238,13 @@ export default function AdminMesas() {
               </button>
             </div>
             <button
-  onClick={() => setQrModal(mesa)}
-  className="w-full mt-2 text-xs text-stone-400 hover:text-amber-600 transition border border-stone-200 rounded-lg py-1.5"
->
-  📱 Ver QR
-</button>
+              onClick={() => abrirQr(mesa)}
+              className="w-full mt-2 text-xs text-stone-400 hover:text-amber-600 transition border border-stone-200 rounded-lg py-1.5"
+            >
+              📱 Ver QR
+            </button>
           </div>
-          
         ))}
-
-        
 
         {mesas.length === 0 && (
           <div className="col-span-4 text-center py-12 text-stone-400 text-sm">
@@ -308,12 +315,12 @@ export default function AdminMesas() {
         </div>
       )}
       {qrModal && (
-  <QRMesa
-    mesa={qrModal}
-    baseUrl={baseUrl}
-    onClose={() => setQrModal(null)}
-  />
-)}
+        <QRMesa
+          mesa={qrModal}
+          baseUrl={baseUrl}
+          onClose={() => setQrModal(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
-import { getMesas, addReservacion, getReservacionesPorFechaHora, getConfig } from "@/lib/db";
-import { enviarEmail } from "@/lib/email";
+
 
 const horasDisponibles = [
   "12:00pm", "12:30pm", "1:00pm", "1:30pm", "2:00pm", "2:30pm",
@@ -27,58 +26,39 @@ export default function ModalReserva({ onClose }) {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const confirmar = async () => {
-    setCargando(true);
-    setError("");
-    try {
-      const mesas = await getMesas();
-      const reservacionesActivas = await getReservacionesPorFechaHora(form.fecha, form.hora);
-      const mesasOcupadas = reservacionesActivas.map((r) => r.mesaAsignada);
-      const mesaDisponible = mesas.find(
-        (m) => !mesasOcupadas.includes(m.numero) && m.capacidad >= Number(form.personas)
-      );
-
-      if (!mesaDisponible) {
-        setError("No hay mesas disponibles para esa fecha y hora. Por favor elige otro horario.");
-        setCargando(false);
-        return;
-      }
-
-      await addReservacion({
-        clienteNombre: form.nombre,
-        clienteWhatsapp: form.whatsapp,
-        clienteEmail: form.email,
+const confirmar = async () => {
+  setCargando(true);
+  setError("");
+  try {
+    const res = await fetch("/api/reservaciones", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: form.nombre,
+        whatsapp: form.whatsapp,
+        email: form.email,
         fecha: form.fecha,
         hora: form.hora,
         personas: Number(form.personas),
-        mesaAsignada: mesaDisponible.numero,
-        estado: "activa",
-        timestamp: new Date(),
-      });
+      }),
+    });
 
-      // Enviar email de confirmación
-      if (form.email) {
-        const config = await getConfig();
-        await enviarEmail("confirmacion", {
-          clienteNombre: form.nombre,
-          clienteEmail: form.email,
-          restaurante: config?.nombre || "El Restaurante",
-          fecha: form.fecha,
-          hora: form.hora,
-          personas: form.personas,
-          mesaAsignada: mesaDisponible.numero,
-          tiempoGracia: config?.tiempoGracia || 15,
-        });
-      }
+    const data = await res.json();
 
-      setMesaAsignada(mesaDisponible.numero);
-      setPaso(3);
-    } catch (err) {
-      setError("Ocurrió un error. Por favor intenta de nuevo.");
-    } finally {
+    if (!res.ok) {
+      setError(data.error || "No hay mesas disponibles para esa fecha y hora. Por favor elige otro horario.");
       setCargando(false);
+      return;
     }
-  };
+
+    setMesaAsignada(data.mesaAsignada);
+    setPaso(3);
+  } catch (err) {
+    setError("Ocurrió un error. Por favor intenta de nuevo.");
+  } finally {
+    setCargando(false);
+  }
+};
 
   return (
     <div

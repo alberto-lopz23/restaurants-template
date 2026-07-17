@@ -9,6 +9,7 @@ const categorias = ["Entradas", "Platos Principales", "Bebidas", "Postres"];
 function MenuContent() {
   const searchParams = useSearchParams();
   const mesa = searchParams.get("mesa");
+  const token = searchParams.get("t");
 
   const [platos, setPlatos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -20,7 +21,7 @@ function MenuContent() {
   const [carritoAbierto, setCarritoAbierto] = useState(false);
   const [pedidoEnviado, setPedidoEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
-const config = useConfig();
+  const config = useConfig();
 
   useEffect(() => {
     const cargar = async () => {
@@ -64,53 +65,32 @@ const config = useConfig();
   };
 
   const enviarPedido = async () => {
-    if (!mesa || carrito.length === 0) return;
+    if (!mesa || !token || carrito.length === 0) return;
     setEnviando(true);
     try {
-      const { getMesas, getSesionActiva, addPedidoSesion, getPedidosSesion, updatePedidoSesion, incrementarPopularidad } = await import("@/lib/db");
-      const { arrayUnion } = await import("firebase/firestore");
-
-      const mesas = await getMesas();
-      const mesaDoc = mesas.find((m) => m.numero === Number(mesa));
-      if (!mesaDoc) {
-        alert("Mesa no encontrada. Escanea el QR nuevamente.");
-        return;
-      }
-
-      const sesion = await getSesionActiva(mesaDoc.id);
-      if (!sesion) {
-        alert("Esta mesa no tiene una sesión activa. Pide al personal que abra la mesa.");
-        return;
-      }
-
       const platosNuevos = carrito.map((p) => ({
+        id: p.id,
         nombre: p.nombre,
         cantidad: p.cantidad,
         precio: p.precio,
       }));
 
-      const pedidosExistentes = await getPedidosSesion(mesaDoc.id, sesion.id);
-      const pedidoPendiente = pedidosExistentes.find((p) => p.estado === "pendiente");
-
-      if (pedidoPendiente) {
-        await updatePedidoSesion(mesaDoc.id, sesion.id, pedidoPendiente.id, {
-          platos: arrayUnion(...platosNuevos),
-          timestamp: new Date(),
-        });
-      } else {
-        await addPedidoSesion(mesaDoc.id, sesion.id, {
+      const res = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           mesa: Number(mesa),
+          token,
+          accion: "pedido",
           platos: platosNuevos,
-          estado: "pendiente",
-          llamarCamarero: false,
-          pedirCuenta: false,
-          timestamp: new Date(),
-        });
-      }
+        }),
+      });
 
-      await incrementarPopularidad(
-        carrito.map((p) => ({ id: p.id, cantidad: p.cantidad }))
-      );
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Error al enviar el pedido. Intenta de nuevo.");
+        return;
+      }
 
       setCarrito([]);
       setCarritoAbierto(false);
@@ -125,36 +105,18 @@ const config = useConfig();
   };
 
   const llamarCamarero = async () => {
-    if (!mesa) return;
+    if (!mesa || !token) return;
     try {
-      const { getMesas, getSesionActiva, getPedidosSesion, addPedidoSesion, updatePedidoSesion } = await import("@/lib/db");
-
-      const mesas = await getMesas();
-      const mesaDoc = mesas.find((m) => m.numero === Number(mesa));
-      if (!mesaDoc) return;
-
-      const sesion = await getSesionActiva(mesaDoc.id);
-      if (!sesion) {
-        alert("Esta mesa no tiene una sesión activa.");
+      const res = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mesa: Number(mesa), token, accion: "llamarCamarero" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Error. Intenta de nuevo.");
         return;
       }
-
-      const pedidosExistentes = await getPedidosSesion(mesaDoc.id, sesion.id);
-      const pedidoPendiente = pedidosExistentes.find((p) => p.estado === "pendiente");
-
-      if (pedidoPendiente) {
-        await updatePedidoSesion(mesaDoc.id, sesion.id, pedidoPendiente.id, { llamarCamarero: true });
-      } else {
-        await addPedidoSesion(mesaDoc.id, sesion.id, {
-          mesa: Number(mesa),
-          platos: [],
-          estado: "pendiente",
-          llamarCamarero: true,
-          pedirCuenta: false,
-          timestamp: new Date(),
-        });
-      }
-
       setCarritoAbierto(false);
       alert("¡El camarero está en camino!");
     } catch (err) {
@@ -163,24 +125,18 @@ const config = useConfig();
   };
 
   const pedirCuenta = async () => {
-    if (!mesa) return;
+    if (!mesa || !token) return;
     try {
-      const { getMesas, getSesionActiva, getPedidosSesion, updatePedidoSesion } = await import("@/lib/db");
-
-      const mesas = await getMesas();
-      const mesaDoc = mesas.find((m) => m.numero === Number(mesa));
-      if (!mesaDoc) return;
-
-      const sesion = await getSesionActiva(mesaDoc.id);
-      if (!sesion) return;
-
-      const pedidosExistentes = await getPedidosSesion(mesaDoc.id, sesion.id);
-      const pedidoPendiente = pedidosExistentes.find((p) => p.estado === "pendiente");
-
-      if (pedidoPendiente) {
-        await updatePedidoSesion(mesaDoc.id, sesion.id, pedidoPendiente.id, { pedirCuenta: true });
+      const res = await fetch("/api/pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mesa: Number(mesa), token, accion: "pedirCuenta" }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Error. Intenta de nuevo.");
+        return;
       }
-
       setCarritoAbierto(false);
       alert("¡En un momento el camarero trae tu cuenta!");
     } catch (err) {
@@ -201,26 +157,23 @@ const config = useConfig();
 
   return (
     <div className="min-h-screen bg-stone-50">
-      {/* Header */}
       <div className="bg-white border-b border-stone-200 py-8 text-center px-4 relative">
-  {!mesa && (
-    
-     <a href="/"
-      className="absolute left-4 top-4 flex items-center gap-1 text-stone-400 hover:text-stone-700 text-sm transition"
-    >
-      ← Inicio
-    </a>
-  )}
-  <p className="text-stone-400 text-xs uppercase tracking-[0.3em] mb-2">{config?.nombre || "El Restaurante"}</p>
-  <h1 className="text-3xl font-bold text-stone-800">Nuestra Carta</h1>
-  <div className="flex items-center justify-center gap-3 mt-3">
-    <div className="h-px w-16 bg-stone-300" />
-    <span className="text-stone-400 text-sm">✦</span>
-    <div className="h-px w-16 bg-stone-300" />
-  </div>
-</div>
+        {!mesa && (
+          <a href="/"
+            className="absolute left-4 top-4 flex items-center gap-1 text-stone-400 hover:text-stone-700 text-sm transition"
+          >
+            ← Inicio
+          </a>
+        )}
+        <p className="text-stone-400 text-xs uppercase tracking-[0.3em] mb-2">{config?.nombre || "El Restaurante"}</p>
+        <h1 className="text-3xl font-bold text-stone-800">Nuestra Carta</h1>
+        <div className="flex items-center justify-center gap-3 mt-3">
+          <div className="h-px w-16 bg-stone-300" />
+          <span className="text-stone-400 text-sm">✦</span>
+          <div className="h-px w-16 bg-stone-300" />
+        </div>
+      </div>
 
-      {/* Tabs */}
       <div className="bg-white border-b border-stone-200 sticky top-0 z-10">
         <div className="max-w-3xl mx-auto flex justify-center overflow-x-auto">
           {categorias.map((cat) => (
@@ -239,7 +192,6 @@ const config = useConfig();
         </div>
       </div>
 
-      {/* Contenido */}
       <div className="max-w-3xl mx-auto px-4 py-8 pb-32">
         <div style={{ perspective: "1000px" }}>
           <div
@@ -321,7 +273,6 @@ const config = useConfig();
               </div>
             </div>
 
-            {/* Navegación */}
             <div className="flex justify-between mt-6 px-1">
               <button
                 onClick={() => {
@@ -348,7 +299,6 @@ const config = useConfig();
         </div>
       </div>
 
-      {/* Notificación pedido enviado */}
       {pedidoEnviado && (
         <div className="fixed top-6 left-0 right-0 px-4 z-50 flex justify-center">
           <div className="bg-green-500 text-white px-6 py-3 rounded-2xl shadow-lg font-medium text-sm">
@@ -357,7 +307,6 @@ const config = useConfig();
         </div>
       )}
 
-      {/* Botón flotante del carrito */}
       {cantidadCarrito > 0 && (
         <div className="fixed bottom-6 left-0 right-0 px-4 z-20">
           <button
@@ -375,7 +324,6 @@ const config = useConfig();
         </div>
       )}
 
-      {/* Modal del carrito */}
       {carritoAbierto && (
         <div
           className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center"

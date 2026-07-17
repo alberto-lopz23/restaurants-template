@@ -7,7 +7,7 @@ export default function QRMesa({ mesa, baseUrl, onClose }) {
 
   useEffect(() => {
     if (!canvasRef.current) return;
-    const url = `${baseUrl}/menu?mesa=${mesa.numero}`;
+   const url = `${baseUrl}/menu?mesa=${mesa.numero}&t=${mesa.token}`;
     QRCode.toCanvas(canvasRef.current, url, {
       width: 250,
       margin: 2,

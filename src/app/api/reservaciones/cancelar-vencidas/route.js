@@ -1,5 +1,5 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { enviarEmailServer } from "@/lib/mailer";
 
 const RESTAURANT_ID = "restaurante-1";
 
@@ -13,27 +13,28 @@ export async function GET(request) {
     const ahora = new Date();
     const fechaHoy = ahora.toISOString().split("T")[0];
 
-    const ref = collection(db, "restaurants", RESTAURANT_ID, "reservaciones");
-    const q = query(
-      ref,
-      where("fecha", "==", fechaHoy),
-      where("estado", "==", "activa")
-    );
+    const restRef = adminDb.collection("restaurants").doc(RESTAURANT_ID);
 
-    const snap = await getDocs(q);
+    const [snap, configSnap] = await Promise.all([
+      restRef
+        .collection("reservaciones")
+        .where("fecha", "==", fechaHoy)
+        .where("estado", "==", "activa")
+        .get(),
+      restRef.get(),
+    ]);
+
     if (snap.empty) return Response.json({ mensaje: "Nada que cancelar" });
 
-    const { updateReservacion, getConfig } = await import("@/lib/db");
-    const { enviarEmail } = await import("@/lib/email");
-    const config = await getConfig();
-
+    const config = configSnap.exists ? configSnap.data() : null;
     let canceladas = 0;
 
     for (const docSnap of snap.docs) {
       const r = { id: docSnap.id, ...docSnap.data() };
 
-      // Convertir hora de reserva a Date
-      const [horaParte, meridiem] = r.hora.match(/(\d+:\d+)(am|pm)/i).slice(1);
+      const match = r.hora.match(/(\d+:\d+)(am|pm)/i);
+      if (!match) continue;
+      const [horaParte, meridiem] = match.slice(1);
       let [hh, mm] = horaParte.split(":").map(Number);
       if (meridiem.toLowerCase() === "pm" && hh !== 12) hh += 12;
       if (meridiem.toLowerCase() === "am" && hh === 12) hh = 0;
@@ -45,10 +46,10 @@ export async function GET(request) {
       const limite = new Date(horaReserva.getTime() + tiempoGracia);
 
       if (ahora > limite) {
-        await updateReservacion(r.id, { estado: "cancelada" });
+        await restRef.collection("reservaciones").doc(r.id).update({ estado: "cancelada" });
 
         if (r.clienteEmail) {
-          await enviarEmail("cancelacion", {
+          await enviarEmailServer("cancelacion", {
             clienteNombre: r.clienteNombre,
             clienteEmail: r.clienteEmail,
             restaurante: config?.nombre || "El Restaurante",
